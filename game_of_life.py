@@ -3,13 +3,14 @@ import pygame
 """ 
 To-Do:
     Get the game working with dragging the mouse as well as clicks.
-    Dynamically adjust simulation speed, cell size, and window size while the game is running.
     Introduce a welcome screen with controls and instructions.
 """
 
-##### Global Constants #####
+##### Globals #####
 DISPLAY_RESOLUTION = [800, 600]
-CELL_SIZE = 20
+CELL_SIZES = [10, 15, 20, 25, 30]
+SIZE = 2
+SPEED = 3
 STROKE = 1
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -19,7 +20,7 @@ GREY = (100, 100, 100)
 ##### Functions #####
 # Takes a mouse position (x, y) and translates to a 2-d index (row, column).
 def positionToIndex(position):
-    return (position[1] // CELL_SIZE, position[0] // CELL_SIZE)
+    return (position[1] // CELL_SIZES[SIZE], position[0] // CELL_SIZES[SIZE])
 
 
 # Takes a boolean grid and draws it to a screen.
@@ -27,7 +28,7 @@ def drawGrid(grid, screen):
     for row in range(len(grid)):
         for col in range(len(grid[row])):
             color = WHITE if grid[row][col] is True else BLACK
-            pygame.draw.rect(screen, color, (CELL_SIZE * col, CELL_SIZE * row, CELL_SIZE - STROKE, CELL_SIZE - STROKE))
+            pygame.draw.rect(screen, color, (CELL_SIZES[SIZE] * col, CELL_SIZES[SIZE] * row, CELL_SIZES[SIZE] - STROKE, CELL_SIZES[SIZE] - STROKE))
 
 
 # Iterate in a square around the point and count how many neighbors are alive
@@ -95,9 +96,11 @@ def main():
     screen = pygame.display.set_mode(DISPLAY_RESOLUTION)
     running = True
     paused = True
+    global SIZE
+    global SPEED
 
     # Init the gameboard
-    numRows, numCols = DISPLAY_RESOLUTION[1] // CELL_SIZE, DISPLAY_RESOLUTION[0] // CELL_SIZE
+    numRows, numCols = DISPLAY_RESOLUTION[1] // CELL_SIZES[SIZE], DISPLAY_RESOLUTION[0] // CELL_SIZES[SIZE]
     grid = [[False for _ in range(numCols)] for _ in range(numRows)]
 
     while running:
@@ -111,7 +114,32 @@ def main():
                 # r resets the game if it's paused
                 if paused and event.key == pygame.K_r:
                     grid = [[False for _ in range(numCols)] for _ in range(numRows)]
-                    numRows, numCols = DISPLAY_RESOLUTION[1] // CELL_SIZE, DISPLAY_RESOLUTION[0] // CELL_SIZE
+                    numRows, numCols = DISPLAY_RESOLUTION[1] // CELL_SIZES[SIZE], DISPLAY_RESOLUTION[0] // CELL_SIZES[SIZE]
+                
+                # # up and down keys will change the cell size
+                if paused and event.key == pygame.K_DOWN:
+                    if SIZE > 0:
+                        SIZE -= 1
+                        numRows, numCols = DISPLAY_RESOLUTION[1] // CELL_SIZES[SIZE], DISPLAY_RESOLUTION[0] // CELL_SIZES[SIZE]
+                        oldGrid = grid
+                        grid = [[False for _ in range(numCols)] for _ in range(numRows)]
+                        gridCopy(oldGrid, grid)  
+                    
+                if paused and event.key == pygame.K_UP:
+                    if SIZE < len(CELL_SIZES) - 1:
+                        SIZE += 1
+                        numRows, numCols = DISPLAY_RESOLUTION[1] // CELL_SIZES[SIZE], DISPLAY_RESOLUTION[0] // CELL_SIZES[SIZE]
+                        oldGrid = grid
+                        grid = [[False for _ in range(numCols)] for _ in range(numRows)]
+                        gridCopy(oldGrid, grid)  
+                
+                # Left and right keys will change the game speed
+                if not paused and event.key == pygame.K_LEFT:
+                    if SPEED > 1:
+                        SPEED -= 1
+                if not paused and event.key == pygame.K_RIGHT:
+                    if SPEED < 5:
+                        SPEED += 1
 
             # Clicking a cell flips it between alive and dead.
             if paused and event.type == pygame.MOUSEBUTTONDOWN:
@@ -126,7 +154,7 @@ def main():
         # Computing
         if not paused:
             grid = mutate(grid)
-            dt = clock.tick(3)
+            dt = clock.tick(SPEED)
             
             # if grid is empty, lets automatically pause the game as nothing is running.
             if grid == [[False for _ in range(numCols)] for _ in range(numRows)]:
